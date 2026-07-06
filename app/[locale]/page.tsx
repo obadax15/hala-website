@@ -113,6 +113,11 @@ export default function Home() {
   const [navScrolled, setNavScrolled] = useState(false);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
 
+  // Form states
+  const [customOrderLoading, setCustomOrderLoading] = useState(false);
+  const [contactLoading, setContactLoading] = useState(false);
+  const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
+
   const isRtl = lang === "ar";
   const T = (key: Parameters<typeof tr>[0]) => tr(key, lang);
 
@@ -141,6 +146,69 @@ export default function Home() {
   };
 
   const toggleLang = () => setLang((l) => (l === "en" ? "ar" : "en"));
+
+  const showToast = (msg: string, type: "success" | "error") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 5000);
+  };
+
+  const handleCustomOrderSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    setCustomOrderLoading(true);
+    try {
+      const res = await fetch("/api/custom-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: fd.get("name") as string,
+          email: fd.get("email") as string,
+          color: fd.get("color") as string,
+          occasion: fd.get("occasion") as string,
+          message: fd.get("message") as string,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(T("formSuccess"), "success");
+        (e.target as HTMLFormElement).reset();
+      } else {
+        showToast(data.error || "Something went wrong. Please try again.", "error");
+      }
+    } catch {
+      showToast("Network error. Please try again.", "error");
+    } finally {
+      setCustomOrderLoading(false);
+    }
+  };
+
+  const handleContactSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    setContactLoading(true);
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: fd.get("name") as string,
+          email: fd.get("email") as string,
+          message: fd.get("message") as string,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(T("contactSuccess"), "success");
+        (e.target as HTMLFormElement).reset();
+      } else {
+        showToast(data.error || "Something went wrong. Please try again.", "error");
+      }
+    } catch {
+      showToast("Network error. Please try again.", "error");
+    } finally {
+      setContactLoading(false);
+    }
+  };
 
   const navItems: [string, string][] = [
     [T("navStory"), "story"], [T("navCollections"), "brands"], [T("navHijabs"), "hijab-products"],
@@ -302,13 +370,19 @@ export default function Home() {
           <p className="fade-in-section" style={{ fontSize: "1rem", color: "var(--text-secondary)", maxWidth: 520, margin: "0 auto", lineHeight: 1.7 }}>{T("customDesc")}</p>
         </div>
         <div className="fade-in-section" style={{ background: "var(--white)", borderRadius: "var(--radius-lg)", padding: "48px 40px", boxShadow: "var(--shadow-card)", border: "1px solid rgba(207,161,141,0.1)" }}>
-          <form onSubmit={(e) => { e.preventDefault(); alert(T("formSuccess")); }} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }} className="custom-form-grid">
-            <div><label style={{ display: "block", marginBottom: 8, fontSize: "0.85rem", fontWeight: 500, color: "var(--text-secondary)" }}>{T("formName")}</label><input className="form-input" type="text" placeholder={T("formNamePh")} required /></div>
-            <div><label style={{ display: "block", marginBottom: 8, fontSize: "0.85rem", fontWeight: 500, color: "var(--text-secondary)" }}>{T("formEmail")}</label><input className="form-input" type="email" placeholder={T("formEmailPh")} required /></div>
-            <div><label style={{ display: "block", marginBottom: 8, fontSize: "0.85rem", fontWeight: 500, color: "var(--text-secondary)" }}>{T("formColor")}</label><input className="form-input" type="text" placeholder={T("formColorPh")} /></div>
-            <div><label style={{ display: "block", marginBottom: 8, fontSize: "0.85rem", fontWeight: 500, color: "var(--text-secondary)" }}>{T("formOccasion")}</label><input className="form-input" type="text" placeholder={T("formOccasionPh")} /></div>
-            <div style={{ gridColumn: "1 / -1" }}><label style={{ display: "block", marginBottom: 8, fontSize: "0.85rem", fontWeight: 500, color: "var(--text-secondary)" }}>{T("formMsg")}</label><textarea className="form-input" rows={4} placeholder={T("formMsgPh")} style={{ resize: "vertical" }} /></div>
-            <div style={{ gridColumn: "1 / -1", textAlign: "center", marginTop: 12 }}><button type="submit" className="btn-primary" style={{ padding: "16px 48px", fontSize: "1rem" }}>{T("formBtn")} <ArrowIcon rtl={isRtl} /></button></div>
+          <form onSubmit={handleCustomOrderSubmit} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }} className="custom-form-grid">
+            <div><label style={{ display: "block", marginBottom: 8, fontSize: "0.85rem", fontWeight: 500, color: "var(--text-secondary)" }}>{T("formName")}</label><input name="name" className="form-input" type="text" placeholder={T("formNamePh")} required /></div>
+            <div><label style={{ display: "block", marginBottom: 8, fontSize: "0.85rem", fontWeight: 500, color: "var(--text-secondary)" }}>{T("formEmail")}</label><input name="email" className="form-input" type="email" placeholder={T("formEmailPh")} required /></div>
+            <div><label style={{ display: "block", marginBottom: 8, fontSize: "0.85rem", fontWeight: 500, color: "var(--text-secondary)" }}>{T("formColor")}</label><input name="color" className="form-input" type="text" placeholder={T("formColorPh")} /></div>
+            <div><label style={{ display: "block", marginBottom: 8, fontSize: "0.85rem", fontWeight: 500, color: "var(--text-secondary)" }}>{T("formOccasion")}</label><input name="occasion" className="form-input" type="text" placeholder={T("formOccasionPh")} /></div>
+            <div style={{ gridColumn: "1 / -1" }}><label style={{ display: "block", marginBottom: 8, fontSize: "0.85rem", fontWeight: 500, color: "var(--text-secondary)" }}>{T("formMsg")}</label><textarea name="message" className="form-input" rows={4} placeholder={T("formMsgPh")} style={{ resize: "vertical" }} /></div>
+            <div style={{ gridColumn: "1 / -1", textAlign: "center", marginTop: 12 }}>
+              <button type="submit" className="btn-primary" style={{ padding: "16px 48px", fontSize: "1rem", opacity: customOrderLoading ? 0.7 : 1, cursor: customOrderLoading ? "not-allowed" : "pointer" }} disabled={customOrderLoading}>
+                {customOrderLoading ? (
+                  <span style={{ display: "flex", alignItems: "center", gap: 10 }}><span style={{ width: 18, height: 18, border: "2px solid rgba(255,255,255,0.4)", borderTopColor: "white", borderRadius: "50%", display: "inline-block", animation: "spin 0.8s linear infinite" }} />Sending…</span>
+                ) : <>{T("formBtn")} <ArrowIcon rtl={isRtl} /></>}
+              </button>
+            </div>
           </form>
         </div>
       </section>
@@ -380,11 +454,15 @@ export default function Home() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 48, alignItems: "start" }} className="contact-grid">
           <div className="fade-in-left" style={{ background: "var(--white)", borderRadius: "var(--radius-lg)", padding: "40px 36px", boxShadow: "var(--shadow-card)", border: "1px solid rgba(207,161,141,0.1)" }}>
             <h3 style={{ fontFamily: isRtl ? "var(--font-arabic)" : "var(--font-heading)", fontSize: "1.4rem", marginBottom: 24 }}>{T("contactFormTitle")}</h3>
-            <form onSubmit={(e) => { e.preventDefault(); alert(T("contactSuccess")); }} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-              <input className="form-input" type="text" placeholder={T("contactNamePh")} required />
-              <input className="form-input" type="email" placeholder={T("contactEmailPh")} required />
-              <textarea className="form-input" rows={4} placeholder={T("contactMsgPh")} style={{ resize: "vertical" }} required />
-              <button type="submit" className="btn-primary" style={{ alignSelf: isRtl ? "flex-end" : "flex-start" }}>{T("contactSendBtn")}</button>
+            <form onSubmit={handleContactSubmit} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+              <input name="name" className="form-input" type="text" placeholder={T("contactNamePh")} required />
+              <input name="email" className="form-input" type="email" placeholder={T("contactEmailPh")} required />
+              <textarea name="message" className="form-input" rows={4} placeholder={T("contactMsgPh")} style={{ resize: "vertical" }} required />
+              <button type="submit" className="btn-primary" style={{ alignSelf: isRtl ? "flex-end" : "flex-start", opacity: contactLoading ? 0.7 : 1, cursor: contactLoading ? "not-allowed" : "pointer" }} disabled={contactLoading}>
+                {contactLoading ? (
+                  <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.4)", borderTopColor: "white", borderRadius: "50%", display: "inline-block", animation: "spin 0.8s linear infinite" }} />Sending…</span>
+                ) : T("contactSendBtn")}
+              </button>
             </form>
           </div>
           <div className="fade-in-right" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -463,6 +541,34 @@ export default function Home() {
         @media (max-width: 480px) {
           .product-grid { grid-template-columns: 1fr !important; }
           .footer-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+
+      {/* ── Toast Notification ── */}
+      {toast && (
+        <div style={{
+          position: "fixed", bottom: 32, [isRtl ? "left" : "right"]: 32, zIndex: 9999,
+          display: "flex", alignItems: "center", gap: 12,
+          background: toast.type === "success"
+            ? "linear-gradient(135deg, #3A2E2A 0%, #6B5B55 100%)"
+            : "linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)",
+          color: "white", padding: "16px 20px", borderRadius: 16,
+          boxShadow: "0 20px 60px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.05)",
+          animation: "slideInToast 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
+          maxWidth: 380, fontSize: "0.9rem", lineHeight: 1.5,
+        }}>
+          <span style={{ fontSize: "1.4rem", flexShrink: 0 }}>{toast.type === "success" ? "✅" : "❌"}</span>
+          <span style={{ flex: 1 }}>{toast.msg}</span>
+          <button onClick={() => setToast(null)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.6)", cursor: "pointer", fontSize: "1.4rem", lineHeight: 1, padding: "0 0 0 8px", flexShrink: 0 }}>×</button>
+        </div>
+      )}
+      <style>{`
+        @keyframes slideInToast {
+          from { opacity: 0; transform: translateY(20px) scale(0.92); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
       `}</style>
     </>

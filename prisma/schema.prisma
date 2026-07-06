@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum Role {
@@ -31,38 +32,38 @@ enum CustomRequestStatus {
 
 // NextAuth Required Models
 model User {
-  id            String          @id @default(cuid())
+  id            String    @id @default(cuid())
   name          String?
-  email         String?         @unique
+  email         String?   @unique
   emailVerified DateTime?
   passwordHash  String?
   image         String?
-  role          Role            @default(CUSTOMER)
+  role          Role      @default(CUSTOMER)
   accounts      Account[]
   sessions      Session[]
-  
+
   // App specific relations
-  orders        Order[]
+  orders         Order[]
   customRequests CustomRequest[]
 
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  deletedAt     DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 }
 
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?  @db.Text
-  access_token       String?  @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?  @db.Text
-  session_state      String?
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -87,17 +88,17 @@ model VerificationToken {
 
 // Application Models
 model ProductSync {
-  id           String      @id @default(cuid())
-  sanityId     String      @unique // ID linking to Sanity CMS Product
-  price        Float
-  stock        Int         @default(0)
-  isActive     Boolean     @default(true)
-  
-  orderItems   OrderItem[]
+  id       String  @id @default(cuid())
+  sanityId String  @unique // ID linking to Sanity CMS Product
+  price    Float
+  stock    Int     @default(0)
+  isActive Boolean @default(true)
 
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  deletedAt    DateTime?
+  orderItems OrderItem[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 }
 
 model Order {
@@ -108,11 +109,11 @@ model Order {
   totalAmount     Float
   paymentIntentId String?     @unique
 
-  items           OrderItem[]
+  items OrderItem[]
 
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  deletedAt       DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 }
 
 model OrderItem {
@@ -129,17 +130,17 @@ model OrderItem {
 }
 
 model CustomRequest {
-  id            String              @id @default(cuid())
-  userId        String?
-  user          User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
-  name          String
-  email         String
-  details       String              @db.Text
-  status        CustomRequestStatus @default(SUBMITTED)
-  quotePrice    Float?
-  imageUrls     String[]
+  id         String              @id @default(cuid())
+  userId     String?
+  user       User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name       String
+  email      String
+  details    String              @db.Text
+  status     CustomRequestStatus @default(SUBMITTED)
+  quotePrice Float?
+  imageUrls  String[]
 
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
-  deletedAt     DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 }

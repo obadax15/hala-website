@@ -1,3 +1,6 @@
+// lru-cache v10+ ships its own types; ts-ignore only if tsc can't find them
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-expect-error lru-cache bundles its own declarations in v10
 import { LRUCache } from 'lru-cache';
 import { NextResponse } from 'next/server';
 
