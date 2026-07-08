@@ -16,5 +16,15 @@
   "ctaDesc": "Explore our collections and find pieces that speak to your sense of beauty.",
   "contactSuccess": "Thank you for your message! We'll get back to you soon.",
   "contactConnectDesc": "Follow us on Instagram for daily inspiration, new arrivals, and behind-the-scenes content.",
-  "footerDesc": "Where elegance meets creativity. Handmade hijabs and custom plexi creations designed with love."
+  "footerDesc": "Where elegance meets creativity. Handmade hijabs and custom plexi creations designed with love.",
+  "authLoginTitle": "Welcome Back",
+  "authLoginSub": "Enter your phone number to sign in or create an account",
+  "authPhoneLabel": "Phone Number",
+  "authPhonePlaceholder": "+963912345678",
+  "authSendOTP": "Continue with WhatsApp",
+  "authOTPTitle": "Verify Your Number",
+  "authOTPSub": "We've sent a 6-digit code to your WhatsApp",
+  "authVerifyBtn": "Verify Code",
+  "authResendBtn": "Didn't receive the code? Resend",
+  "authLoading": "Please wait..."
 }

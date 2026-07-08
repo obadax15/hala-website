@@ -56,7 +56,8 @@ The Halahello platform will utilize a **Hybrid Architecture** combining a **Head
 | **Hero & Story Sections** | ✅ | ❌ | Purely marketing content; needs visual editing. |
 | **Testimonials & FAQs** | ✅ | ❌ | Frequent updates by non-technical staff. |
 | **Product Catalog (Text/Images)** | ✅ | ❌ | Rich media and descriptions belong in a CMS. |
-| **Product Inventory & Pricing** | ❌ | ✅ | Transactional data; requires strict locking and validation to prevent overselling. |
+| **Product Inventory** | ❌ | ✅ | Transactional data; requires strict locking and validation to prevent overselling. |
+| **Product Pricing** | ✅ | ❌ | Pricing is managed alongside product content in Sanity and synced via Webhooks. |
 | **User Authentication** | ❌ | ✅ | Security and PII protection requires a dedicated DB. |
 | **Shopping Cart & Checkout** | ❌ | ✅ | Business logic, discounts, and payment gateways. |
 | **Standard Orders** | ❌ | ✅ | Relational data tying Users, Products, and Payments. |
@@ -122,5 +123,5 @@ Halahello is not just a blog (where Option A would suffice), nor is it a pure Sa
 Attempting to build a CMS from scratch in the custom backend will result in a clunky, rigid editor that frustrates the business owners. Conversely, attempting to force user accounts, secure payment gateways, and inventory logic into Sanity will result in security vulnerabilities and relational data nightmares.
 
 **Clear Boundary of Responsibilities:**
-To avoid overlap, the golden rule of this architecture is: **Sanity owns the "Display", the Backend owns the "Transaction".**
-When a product is created, it is created in Sanity (Title, Images, Description). Sanity triggers a webhook to the Backend, which creates a lightweight `Product_Sync` record containing only the `sanity_id`, `price`, and `stock`. When a user browses, they see Sanity data. When they click "Checkout", the backend takes over, verifying the price and stock against its own secure database before charging the card.
+To avoid overlap, the golden rule of this architecture is: **Sanity owns the "Catalog", the Backend owns the "Transaction".**
+When a product is created or updated, it is done in Sanity (Title, Images, Description, Price). Sanity triggers a webhook (`/api/webhooks/sanity`) to the Backend, which creates/updates a `Product_Sync` record containing the `sanity_id`, `price`, and `stock`. This webhook handles create, update, and delete events. When a user browses, they see Sanity data. When they click "Checkout", the backend takes over, verifying the synced price and stock against its own secure database before charging the card.

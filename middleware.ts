@@ -34,6 +34,19 @@ export default auth(async (req: NextRequest & { auth: any }) => {
     }
   }
 
+  // Protect customer routes: /[locale]/account and /[locale]/checkout
+  const isCustomerRoute = /^\/(en|ar)\/(account|checkout)(\/|$)/.test(pathname);
+  if (isCustomerRoute) {
+    const session = req.auth;
+    if (!session) {
+      const localeMatch = pathname.match(/^\/(en|ar)/);
+      const locale = localeMatch ? localeMatch[1] : 'en';
+      const loginUrl = new URL(`/${locale}/login`, req.url);
+      loginUrl.searchParams.set('callbackUrl', req.url);
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
   // Run i18n middleware for all other routes
   return intlMiddleware(req);
 });

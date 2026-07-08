@@ -49,4 +49,10 @@ export interface CheckoutOrderResponse {
   totalAmount: number;
   currency: string;
   expiresAt: string; // ISO timestamp
+  /** Display number shown to the customer for the ShamCash transfer */
+  paymentDisplayNumber?: string;
+  /** Which payment method was selected: 'shamcash' | 'stripe' */
+  paymentMethod?: 'shamcash' | 'stripe';
+  /** Stripe Checkout URL — only present when paymentMethod === 'stripe' */
+  url?: string;
 }

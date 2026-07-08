@@ -8,6 +8,8 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// ── Enums ─────────────────────────────────────────────────────────────────────
+
 enum Role {
   CUSTOMER
   ADMIN
@@ -15,10 +17,14 @@ enum Role {
 
 enum OrderStatus {
   PENDING
-  PROCESSING
+  CONFIRMED
+  PREPARING
+  READY_FOR_SHIPPING
   SHIPPED
   DELIVERED
   CANCELLED
+  FAILED_PAYMENT
+  REFUNDED
 }
 
 enum PaymentStatus {
@@ -37,7 +43,19 @@ enum CustomRequestStatus {
   CANCELLED
 }
 
-// NextAuth Required Models
+enum AddressLabel {
+  HOME
+  WORK
+  OTHER
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+// ── NextAuth Required Models ──────────────────────────────────────────────────
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -49,9 +67,16 @@ model User {
   accounts      Account[]
   sessions      Session[]
 
+  // WhatsApp auth
+  whatsappPhone    String?  @unique
+  whatsappVerified Boolean  @default(false)
+
   // App specific relations
   orders         Order[]
   customRequests CustomRequest[]
+  addresses      Address[]
+  wishlistItems  Wishlist[]
+  couponUsages   CouponUsage[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -93,10 +118,27 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// Application Models
+// ── WhatsApp OTP ──────────────────────────────────────────────────────────────
+
+/// Stores short-lived OTP codes for WhatsApp phone verification.
+/// Records are never deleted — `used` flag and `expiresAt` enforce single-use + TTL.
+model PhoneVerification {
+  id        String   @id @default(cuid())
+  phone     String   // E.164 format, e.g. +963912345678
+  code      String   // 6-digit numeric string
+  expiresAt DateTime
+  used      Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+}
+
+// ── Application Models ────────────────────────────────────────────────────────
+
 model ProductSync {
   id       String  @id @default(cuid())
-  sanityId String  @unique // ID linking to Sanity CMS Product
+  sanityId String  @unique // Slug matching the Sanity CMS product
   price    Float
   stock    Int     @default(0)
   isActive Boolean @default(true)
@@ -109,43 +151,60 @@ model ProductSync {
 }
 
 model Order {
-  id              String        @id @default(cuid())
-  userId          String?
-  user            User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  status          OrderStatus   @default(PENDING)
-  paymentStatus   PaymentStatus @default(PENDING)
-  totalAmount     Float
-  currency        String        @default("SYP")
-  
-  referenceCode         String? @unique // ShamCash reference (e.g. HL-2026...)
+  id            String        @id @default(cuid())
+  userId        String?
+  user          User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  status        OrderStatus   @default(PENDING)
+  paymentStatus PaymentStatus @default(PENDING)
+  totalAmount   Float
+  currency      String        @default("SYP")
+
+  referenceCode         String? @unique // ShamCash reference (e.g. HL-20260707-A3F2)
   stripeSessionId       String? @unique
   stripePaymentIntentId String? @unique
 
   // Guest checkout — stored even when userId is null
-  customerName    String?
-  customerEmail   String?
-  customerPhone   String?
-  customerNote    String?     @db.Text
+  customerName  String?
+  customerEmail String?
+  customerPhone String?
+  customerNote  String? @db.Text
+
+  // Applied coupon (if any)
+  couponId       String?
+  coupon         Coupon? @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  discountAmount Float   @default(0)
 
   // Payment lifecycle timestamps
-  expiresAt       DateTime?   // when pending order expires waiting for payment
-  paidAt          DateTime?   // set when payment is confirmed
+  expiresAt DateTime? // when pending order expires waiting for payment
+  paidAt    DateTime? // set when payment is confirmed
 
-  items OrderItem[]
+  items        OrderItem[]
+  couponUsages CouponUsage[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model OrderItem {
-  id              String      @id @default(cuid())
-  orderId         String
-  order           Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productSyncId   String
-  productSync     ProductSync @relation(fields: [productSyncId], references: [id])
-  quantity        Int
+  id            String      @id @default(cuid())
+  orderId       String
+  order         Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productSyncId String
+  productSync   ProductSync @relation(fields: [productSyncId], references: [id])
+  quantity      Int
   priceAtPurchase Float
+
+  // Product data snapshot at time of order (survives product deletions/updates)
+  snapshotTitle    String? // Product title at time of order
+  snapshotImageUrl String? // Product image URL at time of order
+
+  // Per-item customization data (e.g. { "color": "red", "text": "Happy Birthday" })
+  customization Json?
 
   @@index([orderId])
   @@index([productSyncId])
@@ -165,4 +224,80 @@ model CustomRequest {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+}
+
+// ── Customer Addresses ────────────────────────────────────────────────────────
+
+/// Saved delivery addresses for registered customers.
+model Address {
+  id           String       @id @default(cuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label        AddressLabel @default(HOME)
+  fullName     String
+  phone        String
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  country      String       @default("Syria")
+  isDefault    Boolean      @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ── Coupons ───────────────────────────────────────────────────────────────────
+
+/// Coupon / discount codes redeemable at checkout.
+model Coupon {
+  id               String       @id @default(cuid())
+  code             String       @unique
+  description      String?
+  discountType     DiscountType
+  discountValue    Float        // percentage (0-100) or fixed amount
+  minOrderAmount   Float?       // minimum cart total to apply coupon
+  maxUses          Int?         // null = unlimited
+  usedCount        Int          @default(0)
+  expiresAt        DateTime?    // null = never expires
+  isActive         Boolean      @default(true)
+
+  orders       Order[]
+  couponUsages CouponUsage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Tracks which users have used which coupons (for max-uses enforcement).
+model CouponUsage {
+  id       String @id @default(cuid())
+  couponId String
+  coupon   Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  userId   String?
+  user     User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  orderId  String
+  order    Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([couponId, orderId]) // one coupon usage per order
+  @@index([couponId])
+  @@index([userId])
+}
+
+// ── Wishlist (future-ready) ───────────────────────────────────────────────────
+
+/// Wishlist items — keyed by Sanity product ID (no DB join needed).
+model Wishlist {
+  id              String @id @default(cuid())
+  userId          String
+  user            User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sanityProductId String // Sanity CMS product _id
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, sanityProductId]) // one entry per product per user
+  @@index([userId])
 }

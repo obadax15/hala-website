@@ -45,3 +45,9 @@ export async function upsertProduct(data: {
     select: { id: true, sanityId: true, price: true, stock: true, isActive: true },
   });
 }
+
+export async function deleteProductBySanityId(sanityId: string): Promise<void> {
+  await prisma.productSync.deleteMany({
+    where: { sanityId },
+  });
+}

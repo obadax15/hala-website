@@ -30,7 +30,7 @@ import {
 
 // Initialize Stripe (optional chaining for safety if key is missing)
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2024-06-20',
+  apiVersion: '2026-06-24.dahlia',
 });
 
 // ── Validation schema ─────────────────────────────────────────────────────────

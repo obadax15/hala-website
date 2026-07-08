@@ -15,6 +15,7 @@ export const authConfig = {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.whatsappPhone = user.whatsappPhone;
       }
       return token;
     },
@@ -22,6 +23,7 @@ export const authConfig = {
       if (session.user) {
         session.user.id = token.id;
         session.user.role = token.role;
+        session.user.whatsappPhone = token.whatsappPhone;
       }
       return session;
     },

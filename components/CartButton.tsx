@@ -15,6 +15,7 @@ export default function CartButton() {
     <button
       id="cart-nav-btn"
       onClick={() => router.push('/en/cart')}
+      aria-label={`Shopping cart, ${totalItems} ${totalItems === 1 ? 'item' : 'items'}`}
       title={`Cart (${totalItems} items)`}
       style={{
         position: 'relative', background: 'none', border: 'none',
@@ -22,6 +23,7 @@ export default function CartButton() {
         color: 'var(--text-primary, #FAF7F5)',
         display: 'flex', alignItems: 'center', gap: 6,
         transition: 'background 0.2s',
+        minHeight: 44, minWidth: 44,
       }}
       onMouseEnter={e => (e.currentTarget.style.background = 'rgba(207,161,141,0.1)')}
       onMouseLeave={e => (e.currentTarget.style.background = 'none')}

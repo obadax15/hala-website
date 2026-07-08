@@ -44,8 +44,8 @@ export async function GET(
       return NextResponse.json({
         orderId: order.id,
         status: order.status,
-        paidAt: (order as any).paidAt ?? null,
-        referenceCode: order.paymentIntentId,
+        paidAt: order.paidAt ?? null,
+        referenceCode: order.referenceCode,
       });
     }
 
@@ -66,14 +66,14 @@ export async function GET(
       return NextResponse.json({
         orderId: order.id,
         status: 'PENDING',
-        referenceCode: order.paymentIntentId,
+        referenceCode: order.referenceCode,
         devMode: true,
         message: 'Configure SHAMCASH_API_TOKEN to enable live payment verification.',
       });
     }
 
     // 3. Query ShamCash for matching transaction
-    const referenceCode = order.paymentIntentId!;
+    const referenceCode = order.referenceCode!;
     const transaction = await findPaymentForOrder({
       referenceCode,
       expectedAmount: order.totalAmount,

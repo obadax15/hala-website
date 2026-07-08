@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Lang, tr } from "../translations";
 import CartButton from "@/components/CartButton";
 import { useCartStore } from "@/lib/stores/cart.store";
+import type { SanityProduct } from "@/sanity/lib/queries";
 
 /* ═══════════════════════════════════════════════════
    SVG Icons
@@ -64,7 +65,7 @@ const GlobeIcon = () => (
 /* ═══════════════════════════════════════════════════
    Scroll Animation Hook
    ═══════════════════════════════════════════════════ */
-function useScrollAnimation() {
+function useScrollAnimation(dependencies: any[] = []) {
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -74,9 +75,12 @@ function useScrollAnimation() {
       },
       { threshold: 0.1, rootMargin: "0px 0px -40px 0px" }
     );
-    document.querySelectorAll(".fade-in-section, .fade-in-left, .fade-in-right").forEach((el) => observer.observe(el));
+    // Give React a tick to render new DOM nodes before observing
+    setTimeout(() => {
+      document.querySelectorAll(".fade-in-section, .fade-in-left, .fade-in-right").forEach((el) => observer.observe(el));
+    }, 100);
     return () => observer.disconnect();
-  }, []);
+  }, dependencies);
 }
 
 /* ═══════════════════════════════════════════════════
@@ -84,22 +88,7 @@ function useScrollAnimation() {
    ═══════════════════════════════════════════════════ */
 const INSTAGRAM_URL = "https://instagram.com/halahelloo";
 
-const hijabProducts = [
-  { nameKey: "prodHijab1" as const, image: "/products/hijab/hijab-a1.avif", sanityId: "hijab-rose-silk" },
-  { nameKey: "prodHijab2" as const, image: "/products/hijab/hijab-b1.jpg", sanityId: "hijab-moon-drape" },
-  { nameKey: "prodHijab3" as const, image: "/products/hijab/hijab-c1.jpg", sanityId: "hijab-golden-hour" },
-  { nameKey: "prodHijab4" as const, image: "/products/hijab/hijab-d.PNG", sanityId: "hijab-desert-bloom" },
-];
-
-const plexiProducts = [
-  { nameKey: "prodPlexi1" as const, image: "/products/plexi/a1.webp", sanityId: "plexi-wedding-arch" },
-  { nameKey: "prodPlexi2" as const, image: "/products/plexi/a2.webp", sanityId: "plexi-name-frame" },
-  { nameKey: "prodPlexi3" as const, image: "/products/plexi/a3.webp", sanityId: "plexi-floral-box" },
-  { nameKey: "prodPlexi4" as const, image: "/products/plexi/a4.webp", sanityId: "plexi-gift-set" },
-  { nameKey: "prodPlexi5" as const, image: "/products/plexi/a5.webp", sanityId: "plexi-mirror-sign" },
-  { nameKey: "prodPlexi6" as const, image: "/products/plexi/b1.webp", sanityId: "plexi-shadow-box" },
-];
-
+// Static fallback Instagram images (used when no API token is set)
 const instagramImages = [
   "/products/hijab/hijab.jpg", "/products/plexi/c1.jpg", "/products/hijab/hijab-a1.avif",
   "/products/plexi/d1.jpg", "/products/plexi/e1.jpg", "/products/hijab/hijab-b1.jpg",
@@ -115,8 +104,15 @@ export default function Home() {
   const [navScrolled, setNavScrolled] = useState(false);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
 
+  // Live Instagram feed state
+  const [instaPosts, setInstaPosts] = useState<{ id: string; media_url: string; permalink: string; media_type: string; thumbnail_url?: string }[]>([]);
+  const [instaLoading, setInstaLoading] = useState(true);
+
   // Products & Cart
   const [dbProducts, setDbProducts] = useState<any[]>([]);
+  const [dbProductsFetched, setDbProductsFetched] = useState(false);
+  const [sanityProducts, setSanityProducts] = useState<SanityProduct[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
   const addItem = useCartStore((s) => s.addItem);
 
   // Form states
@@ -124,19 +120,52 @@ export default function Home() {
   const [contactLoading, setContactLoading] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
+  // Fetch prices/stock from Supabase
   useEffect(() => {
     fetch('/api/products')
       .then(res => res.json())
       .then(data => {
         if (data.products) setDbProducts(data.products);
       })
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setDbProductsFetched(true));
+  }, []);
+
+  // Fetch product display data (images, names) from Sanity CMS
+  useEffect(() => {
+    fetch('/api/sanity/products')
+      .then(res => res.json())
+      .then(data => {
+        if (data.products) setSanityProducts(data.products);
+      })
+      .catch(console.error)
+      .finally(() => setProductsLoading(false));
+  }, []);
+
+
+
+  // Derived product lists from Sanity
+  const hijabProducts = sanityProducts.filter(p => p.category === 'hijab');
+  const plexiProducts = sanityProducts.filter(p => p.category === 'plexi');
+
+  // Fetch live Instagram feed, fallback to static images on error
+  useEffect(() => {
+    fetch('/api/instagram/feed')
+      .then(res => res.json())
+      .then(data => {
+        if (data.posts && data.posts.length > 0) {
+          setInstaPosts(data.posts);
+        }
+        // If empty (no token set), instaPosts remains [] → fallback to static below
+      })
+      .catch(() => { /* silently fall back to static images */ })
+      .finally(() => setInstaLoading(false));
   }, []);
 
   const isRtl = lang === "ar";
   const T = (key: Parameters<typeof tr>[0]) => tr(key, lang);
 
-  useScrollAnimation();
+  useScrollAnimation([sanityProducts, productsLoading]);
 
   // Set html dir and lang
   useEffect(() => {
@@ -341,29 +370,37 @@ export default function Home() {
           <p className="fade-in-section" style={{ fontSize: "1rem", color: "var(--text-secondary)", maxWidth: 480, margin: "0 auto" }}>{T("hijabSub")}</p>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 28 }} className="product-grid">
-          {hijabProducts.map((p, i) => {
-            const dbProduct = dbProducts.find((db) => db.sanityId === p.sanityId);
-            return (
-              <div key={p.nameKey} className="product-card fade-in-section" style={{ transitionDelay: `${i * 100}ms` }}>
-                <div style={{ position: "relative", aspectRatio: "3/4", overflow: "hidden" }}>
-                  <Image src={p.image} alt={tr(p.nameKey, lang)} fill style={{ objectFit: "cover" }} sizes="(max-width: 768px) 100vw, 25vw" />
-                </div>
-                <div style={{ padding: "20px 24px", textAlign: "center" }}>
-                  <h3 style={{ fontFamily: isRtl ? "var(--font-arabic)" : "var(--font-heading)", fontSize: "1.1rem", fontWeight: 500, marginBottom: 4 }}>{tr(p.nameKey, lang)}</h3>
-                  <span style={{ fontSize: "0.8rem", color: "var(--accent)", fontWeight: 500, letterSpacing: "0.05em", display: "block", marginBottom: 12 }}>{T("hijabByLine")}</span>
-                  {dbProduct && (
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, padding: "8px 0 0", borderTop: "1px solid rgba(207,161,141,0.15)" }}>
-                      <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{dbProduct.price} SYP</span>
-                      <button onClick={() => {
-                        addItem({ productSyncId: dbProduct.id, sanityId: dbProduct.sanityId, name: tr(p.nameKey, lang), price: dbProduct.price });
-                        showToast(isRtl ? "تمت الإضافة للسلة" : "Added to cart", "success");
-                      }} className="btn-primary" style={{ padding: "8px 16px", fontSize: "0.8rem" }}>{isRtl ? "أضف للسلة" : "Add"}</button>
+          {productsLoading
+            ? Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="product-card skeleton" style={{ aspectRatio: "3/4", animationDelay: `${i * 80}ms` }} aria-hidden="true" />
+              ))
+            : hijabProducts.length === 0
+            ? <p style={{ gridColumn: "1/-1", textAlign: "center", color: "var(--text-secondary)", padding: "60px 0" }}>{isRtl ? "لا توجد منتجات حجاب متاحة حالياً" : "No hijab products available yet. Check back soon!"}</p>
+            : hijabProducts.map((p, i) => {
+                const dbProduct = dbProducts.find((db) => db.sanityId === p.sanityId);
+                const productName = isRtl && p.titleAr ? p.titleAr : p.title;
+                return (
+                  <div key={p._id} className="product-card fade-in-section" style={{ transitionDelay: `${i * 100}ms` }}>
+                    <div style={{ position: "relative", aspectRatio: "3/4", overflow: "hidden" }}>
+                      <Image src={p.imageUrl} alt={productName} fill style={{ objectFit: "cover" }} sizes="(max-width: 768px) 100vw, 25vw" />
                     </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                    <div style={{ padding: "20px 24px", textAlign: "center" }}>
+                      <h3 style={{ fontFamily: isRtl ? "var(--font-arabic)" : "var(--font-heading)", fontSize: "1.1rem", fontWeight: 500, marginBottom: 4 }}>{productName}</h3>
+                      <span style={{ fontSize: "0.8rem", color: "var(--accent)", fontWeight: 500, letterSpacing: "0.05em", display: "block", marginBottom: 12 }}>{T("hijabByLine")}</span>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, padding: "8px 0 0", borderTop: "1px solid rgba(207,161,141,0.15)" }}>
+                        <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{dbProduct ? dbProduct.price : p.price} SYP</span>
+                        <button onClick={() => {
+                          const priceToUse = dbProduct ? dbProduct.price : p.price;
+                          const syncId = dbProduct ? dbProduct.id : `temp-${p.sanityId}`;
+                          addItem({ productSyncId: syncId, sanityId: p.sanityId, name: productName, price: priceToUse });
+                          showToast(isRtl ? "تمت الإضافة للسلة" : "Added to cart", "success");
+                        }} className="btn-primary" style={{ padding: "8px 16px", fontSize: "0.8rem" }}>{isRtl ? "أضف للسلة" : "Add"}</button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+          }
         </div>
       </section>
 
@@ -377,29 +414,37 @@ export default function Home() {
             <p className="fade-in-section" style={{ fontSize: "1rem", color: "var(--text-secondary)", maxWidth: 480, margin: "0 auto" }}>{T("plexiSub")}</p>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 28 }} className="product-grid">
-            {plexiProducts.map((p, i) => {
-              const dbProduct = dbProducts.find((db) => db.sanityId === p.sanityId);
-              return (
-                <div key={p.nameKey} className="product-card plexi-card fade-in-section" style={{ transitionDelay: `${i * 100}ms` }}>
-                  <div style={{ position: "relative", aspectRatio: "1", overflow: "hidden" }}>
-                    <Image src={p.image} alt={tr(p.nameKey, lang)} fill style={{ objectFit: "cover" }} sizes="(max-width: 768px) 100vw, 33vw" />
-                  </div>
-                  <div style={{ padding: "20px 24px", textAlign: "center" }}>
-                    <h3 style={{ fontFamily: isRtl ? "var(--font-arabic)" : "var(--font-heading)", fontSize: "1.1rem", fontWeight: 500, marginBottom: 4 }}>{tr(p.nameKey, lang)}</h3>
-                    <span style={{ fontSize: "0.8rem", color: "var(--accent)", fontWeight: 500, letterSpacing: "0.05em", display: "block", marginBottom: 12 }}>{T("plexiByLine")}</span>
-                    {dbProduct && (
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, padding: "8px 0 0", borderTop: "1px solid rgba(207,161,141,0.15)" }}>
-                        <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{dbProduct.price} SYP</span>
-                        <button onClick={() => {
-                          addItem({ productSyncId: dbProduct.id, sanityId: dbProduct.sanityId, name: tr(p.nameKey, lang), price: dbProduct.price });
-                          showToast(isRtl ? "تمت الإضافة للسلة" : "Added to cart", "success");
-                        }} className="btn-secondary" style={{ padding: "8px 16px", fontSize: "0.8rem" }}>{isRtl ? "أضف للسلة" : "Add"}</button>
+            {productsLoading
+              ? Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="product-card skeleton" style={{ aspectRatio: "1", animationDelay: `${i * 80}ms` }} aria-hidden="true" />
+                ))
+              : plexiProducts.length === 0
+              ? <p style={{ gridColumn: "1/-1", textAlign: "center", color: "var(--text-secondary)", padding: "60px 0" }}>{isRtl ? "لا توجد منتجات بليكسي متاحة حالياً" : "No plexi products available yet. Check back soon!"}</p>
+              : plexiProducts.map((p, i) => {
+                  const dbProduct = dbProducts.find((db) => db.sanityId === p.sanityId);
+                  const productName = isRtl && p.titleAr ? p.titleAr : p.title;
+                  return (
+                    <div key={p._id} className="product-card plexi-card fade-in-section" style={{ transitionDelay: `${i * 100}ms` }}>
+                      <div style={{ position: "relative", aspectRatio: "1", overflow: "hidden" }}>
+                        <Image src={p.imageUrl} alt={productName} fill style={{ objectFit: "cover" }} sizes="(max-width: 768px) 100vw, 33vw" />
                       </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                      <div style={{ padding: "20px 24px", textAlign: "center" }}>
+                        <h3 style={{ fontFamily: isRtl ? "var(--font-arabic)" : "var(--font-heading)", fontSize: "1.1rem", fontWeight: 500, marginBottom: 4 }}>{productName}</h3>
+                        <span style={{ fontSize: "0.8rem", color: "var(--accent)", fontWeight: 500, letterSpacing: "0.05em", display: "block", marginBottom: 12 }}>{T("plexiByLine")}</span>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, padding: "8px 0 0", borderTop: "1px solid rgba(207,161,141,0.15)" }}>
+                          <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{dbProduct ? dbProduct.price : p.price} SYP</span>
+                          <button onClick={() => {
+                            const priceToUse = dbProduct ? dbProduct.price : p.price;
+                            const syncId = dbProduct ? dbProduct.id : `temp-${p.sanityId}`;
+                            addItem({ productSyncId: syncId, sanityId: p.sanityId, name: productName, price: priceToUse });
+                            showToast(isRtl ? "تمت الإضافة للسلة" : "Added to cart", "success");
+                          }} className="btn-secondary" style={{ padding: "8px 16px", fontSize: "0.8rem" }}>{isRtl ? "أضف للسلة" : "Add"}</button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+            }
           </div>
         </div>
       </section>
@@ -439,12 +484,48 @@ export default function Home() {
             <div className="section-divider" />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }} className="insta-grid">
-            {instagramImages.map((img, i) => (
-              <a key={i} href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className="insta-item fade-in-section" style={{ transitionDelay: `${i * 80}ms` }}>
-                <Image src={img} alt={`Halahello Instagram ${i + 1}`} fill style={{ objectFit: "cover" }} sizes="(max-width: 768px) 33vw, 20vw" />
-                <div className="insta-overlay"><span style={{ color: "white" }}><InstagramIcon /></span></div>
-              </a>
-            ))}
+            {instaLoading
+              ? /* Skeleton grid while loading */
+                Array.from({ length: 9 }).map((_, i) => (
+                  <div key={i} className="insta-item skeleton" style={{ aspectRatio: '1', borderRadius: 12, animationDelay: `${i * 80}ms` }} aria-hidden="true" />
+                ))
+              : instaPosts.length > 0
+              ? /* Live Instagram posts */
+                instaPosts.map((post, i) => (
+                  <a key={post.id} href={post.permalink} target="_blank" rel="noopener noreferrer"
+                    className="insta-item fade-in-section"
+                    style={{ transitionDelay: `${i * 80}ms` }}
+                    aria-label={`View post on Instagram`}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={post.media_type === 'VIDEO' ? (post.thumbnail_url ?? post.media_url) : post.media_url}
+                      alt={`Halahello Instagram post ${i + 1}`}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      loading="lazy"
+                    />
+                    <div className="insta-overlay"><span style={{ color: "white" }}><InstagramIcon /></span></div>
+                  </a>
+                ))
+              : /* Fallback: static product images when no API token */
+                instagramImages.map((img, i) => (
+                  <a key={i} href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer"
+                    className="insta-item fade-in-section"
+                    style={{ transitionDelay: `${i * 80}ms` }}
+                    aria-label="Visit Halahello on Instagram">
+                    <Image src={img} alt={`Halahello Instagram ${i + 1}`} fill style={{ objectFit: "cover" }} sizes="(max-width: 768px) 33vw, 20vw" />
+                    <div className="insta-overlay"><span style={{ color: "white" }}><InstagramIcon /></span></div>
+                  </a>
+                ))
+            }
+          </div>
+          {/* Follow CTA */}
+          <div style={{ textAlign: 'center', marginTop: 36 }}>
+            <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer"
+              aria-label="Follow Halahello on Instagram"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '12px 28px', background: 'var(--white)', border: '1.5px solid rgba(207,161,141,0.25)', borderRadius: 'var(--radius-full)', color: 'var(--accent)', fontWeight: 600, fontSize: '0.9rem', textDecoration: 'none', boxShadow: 'var(--shadow-soft)', transition: 'all var(--transition-base)' }}
+            >
+              <InstagramIcon /> @halahelloo
+            </a>
           </div>
         </div>
       </section>
@@ -468,7 +549,10 @@ export default function Home() {
           ))}
           <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 36 }}>
             {testimonials.map((_, i) => (
-              <button key={i} onClick={() => setActiveTestimonial(i)} style={{ width: i === activeTestimonial ? 28 : 10, height: 10, borderRadius: "var(--radius-full)", background: i === activeTestimonial ? "linear-gradient(135deg, var(--accent), var(--accent-light))" : "var(--highlight)", border: "none", cursor: "pointer", transition: "all 0.3s ease" }} />
+              <button key={i} onClick={() => setActiveTestimonial(i)}
+                aria-label={`Show testimonial ${i + 1}`}
+                aria-current={i === activeTestimonial ? 'true' : undefined}
+                style={{ width: i === activeTestimonial ? 28 : 10, height: 10, borderRadius: "var(--radius-full)", background: i === activeTestimonial ? "linear-gradient(135deg, var(--accent), var(--accent-light))" : "var(--highlight)", border: "none", cursor: "pointer", transition: "all 0.3s ease" }} />
             ))}
           </div>
         </div>

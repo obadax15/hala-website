@@ -9,6 +9,7 @@
 
 import prisma from '@/lib/prisma';
 import type { CheckoutPayload } from '@/types/cart';
+import { Prisma } from '@prisma/client';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -17,6 +18,9 @@ export interface ValidatedOrderItem {
   sanityId: string;
   quantity: number;
   priceAtPurchase: number; // price from DB at order creation time (source of truth)
+  snapshotTitle?: string;
+  snapshotImageUrl?: string;
+  customization?: Record<string, string>;
 }
 
 export interface CreateOrderInput {
@@ -26,6 +30,9 @@ export interface CreateOrderInput {
   referenceCode: string;
   currency: string;
   expiresAt: Date;
+  userId?: string;
+  couponId?: string;
+  discountAmount?: number;
 }
 
 // ── Reference code generator ──────────────────────────────────────────────────
@@ -77,22 +84,65 @@ export async function createPendingOrder(input: CreateOrderInput) {
       paymentStatus: 'PENDING',
       totalAmount: input.totalAmount,
       currency: input.currency,
-      referenceCode: input.referenceCode, // ShamCash or local reference
+      referenceCode: input.referenceCode,
       customerName: input.customer.name,
       customerEmail: input.customer.email,
       customerPhone: input.customer.phone ?? null,
       customerNote: input.customer.note ?? null,
       expiresAt: input.expiresAt,
+      userId: input.userId ?? null,
+      couponId: input.couponId ?? null,
+      discountAmount: input.discountAmount ?? 0,
       items: {
         create: input.items.map((item) => ({
           productSyncId: item.productSyncId,
           quantity: item.quantity,
           priceAtPurchase: item.priceAtPurchase,
+          snapshotTitle: item.snapshotTitle ?? null,
+          snapshotImageUrl: item.snapshotImageUrl ?? null,
+          customization: (item.customization as Prisma.InputJsonValue) ?? null,
         })),
       },
     },
     include: {
       items: true,
+    },
+  });
+}
+
+/**
+ * Returns all orders for a given user (customer dashboard).
+ * Ordered newest-first.
+ */
+export async function getOrdersByUserId(userId: string) {
+  return prisma.order.findMany({
+    where: { userId, deletedAt: null },
+    include: {
+      items: {
+        include: {
+          productSync: { select: { sanityId: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+}
+
+/**
+ * Returns a single order with full detail — user-scoped for security.
+ * Returns null if the order does not belong to the requesting user.
+ */
+export async function getOrderDetailById(id: string, userId: string) {
+  return prisma.order.findFirst({
+    where: { id, userId, deletedAt: null },
+    include: {
+      user: { select: { name: true, email: true, whatsappPhone: true } },
+      items: {
+        include: {
+          productSync: { select: { sanityId: true, price: true } },
+        },
+      },
+      coupon: { select: { code: true, discountType: true, discountValue: true } },
     },
   });
 }
@@ -138,7 +188,7 @@ export async function confirmOrderPayment(orderId: string, stripePaymentIntentId
     return tx.order.update({
       where: { id: orderId },
       data: { 
-        status: 'PROCESSING', 
+        status: 'CONFIRMED', 
         paymentStatus: 'PAID',
         paidAt: new Date(),
         ...(stripePaymentIntentId && { stripePaymentIntentId })

@@ -41,6 +41,28 @@
   box-sizing: border-box;
 }
 
+/* ─── Accessibility: Focus Visible ─── */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Remove default outline only when using mouse (pointer devices) */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Ensure interactive elements always show focus rings for keyboard nav */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -457,3 +479,141 @@ h6 {
   border-color: var(--accent);
   transform: translateY(-1px);
 }
+
+/* ─── Skeleton Loader ─── */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, rgba(207,161,141,0.08) 25%, rgba(207,161,141,0.15) 50%, rgba(207,161,141,0.08) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+/* ─── Empty State ─── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  text-align: center;
+  gap: 16px;
+}
+
+.empty-state-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(207,161,141,0.1);
+  border: 2px solid rgba(207,161,141,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  animation: skeleton-pulse 2s ease-in-out infinite;
+}
+
+/* ─── Mobile Responsive Utilities ─── */
+@media (max-width: 640px) {
+  .mobile-stack {
+    flex-direction: column !important;
+  }
+
+  .mobile-full {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .mobile-pad-sm {
+    padding: 20px 16px !important;
+  }
+
+  .mobile-text-sm {
+    font-size: 0.85rem !important;
+  }
+
+  .mobile-hide {
+    display: none !important;
+  }
+
+  /* Touch-friendly minimum target size */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Horizontal scroll for tables on mobile */
+  .table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ─── Error / 404 Page ─── */
+.error-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #0F0D0C 0%, #140F0E 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body, Inter, sans-serif);
+  padding: 24px;
+}
+
+.error-card {
+  max-width: 480px;
+  width: 100%;
+  background: linear-gradient(135deg, #1E1816, #1A1412);
+  border: 1px solid rgba(207,161,141,0.12);
+  border-radius: 24px;
+  padding: 48px 36px;
+  text-align: center;
+}
+
+/* ─── Page-specific Mobile Responsive ─── */
+
+/* Checkout: stack form + sidebar vertically on mobile */
+@media (max-width: 640px) {
+  .checkout-layout {
+    flex-direction: column !important;
+  }
+
+  /* Contact grid: single column */
+  .contact-grid {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+
+  /* Custom order form: single column */
+  .custom-form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Instagram grid: 2 columns on small screens */
+  .insta-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Admin tables: horizontal scroll */
+  .admin-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Error/404 card: tighter padding on mobile */
+  .error-card {
+    padding: 36px 24px;
+  }
+}
+
+/* Very small screens (≤ 380px) */
+@media (max-width: 380px) {
+  .insta-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 6px !important;
+  }
+}
