@@ -17,6 +17,12 @@ export interface CartItem {
   quantity: number;
   /** optional image URL for cart UI */
   imageUrl?: string;
+  /** Snapshot title for the order item (used if product changes later) */
+  snapshotTitle?: string;
+  /** Snapshot image URL */
+  snapshotImageUrl?: string;
+  /** Key-value pairs for selected variants and custom fields */
+  customization?: Record<string, string>;
 }
 
 export interface CartStore {
@@ -33,7 +39,13 @@ export interface CartStore {
 
 /** Payload sent to POST /api/checkout/order */
 export interface CheckoutPayload {
-  items: { productSyncId: string; quantity: number }[];
+  items: { 
+    productSyncId: string; 
+    quantity: number;
+    snapshotTitle?: string;
+    snapshotImageUrl?: string;
+    customization?: Record<string, string>;
+  }[];
   customer: {
     name: string;
     email: string;

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Lang, tr } from "../translations";
 import CartButton from "@/components/CartButton";
 import { useCartStore } from "@/lib/stores/cart.store";
@@ -382,10 +383,14 @@ export default function Home() {
                 return (
                   <div key={p._id} className="product-card fade-in-section" style={{ transitionDelay: `${i * 100}ms` }}>
                     <div style={{ position: "relative", aspectRatio: "3/4", overflow: "hidden" }}>
-                      <Image src={p.imageUrl} alt={productName} fill style={{ objectFit: "cover" }} sizes="(max-width: 768px) 100vw, 25vw" />
+                      <Link href={`/${lang}/products/${p.sanityId}`}>
+                        <Image src={p.imageUrl} alt={productName} fill style={{ objectFit: "cover" }} sizes="(max-width: 768px) 100vw, 25vw" />
+                      </Link>
                     </div>
                     <div style={{ padding: "20px 24px", textAlign: "center" }}>
-                      <h3 style={{ fontFamily: isRtl ? "var(--font-arabic)" : "var(--font-heading)", fontSize: "1.1rem", fontWeight: 500, marginBottom: 4 }}>{productName}</h3>
+                      <Link href={`/${lang}/products/${p.sanityId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                        <h3 style={{ fontFamily: isRtl ? "var(--font-arabic)" : "var(--font-heading)", fontSize: "1.1rem", fontWeight: 500, marginBottom: 4 }}>{productName}</h3>
+                      </Link>
                       <span style={{ fontSize: "0.8rem", color: "var(--accent)", fontWeight: 500, letterSpacing: "0.05em", display: "block", marginBottom: 12 }}>{T("hijabByLine")}</span>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, padding: "8px 0 0", borderTop: "1px solid rgba(207,161,141,0.15)" }}>
                         <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{dbProduct ? dbProduct.price : p.price} SYP</span>
@@ -426,10 +431,14 @@ export default function Home() {
                   return (
                     <div key={p._id} className="product-card plexi-card fade-in-section" style={{ transitionDelay: `${i * 100}ms` }}>
                       <div style={{ position: "relative", aspectRatio: "1", overflow: "hidden" }}>
-                        <Image src={p.imageUrl} alt={productName} fill style={{ objectFit: "cover" }} sizes="(max-width: 768px) 100vw, 33vw" />
+                        <Link href={`/${lang}/products/${p.sanityId}`}>
+                          <Image src={p.imageUrl} alt={productName} fill style={{ objectFit: "cover" }} sizes="(max-width: 768px) 100vw, 33vw" />
+                        </Link>
                       </div>
                       <div style={{ padding: "20px 24px", textAlign: "center" }}>
-                        <h3 style={{ fontFamily: isRtl ? "var(--font-arabic)" : "var(--font-heading)", fontSize: "1.1rem", fontWeight: 500, marginBottom: 4 }}>{productName}</h3>
+                        <Link href={`/${lang}/products/${p.sanityId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                          <h3 style={{ fontFamily: isRtl ? "var(--font-arabic)" : "var(--font-heading)", fontSize: "1.1rem", fontWeight: 500, marginBottom: 4 }}>{productName}</h3>
+                        </Link>
                         <span style={{ fontSize: "0.8rem", color: "var(--accent)", fontWeight: 500, letterSpacing: "0.05em", display: "block", marginBottom: 12 }}>{T("plexiByLine")}</span>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, padding: "8px 0 0", borderTop: "1px solid rgba(207,161,141,0.15)" }}>
                           <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{dbProduct ? dbProduct.price : p.price} SYP</span>

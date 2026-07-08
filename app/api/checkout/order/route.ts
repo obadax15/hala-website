@@ -41,6 +41,9 @@ const checkoutSchema = z.object({
       z.object({
         productSyncId: z.string().min(1),
         quantity: z.number().int().min(1).max(99),
+        snapshotTitle: z.string().optional(),
+        snapshotImageUrl: z.string().optional(),
+        customization: z.record(z.string(), z.string()).optional(),
       })
     )
     .min(1, 'Cart is empty')
@@ -104,6 +107,9 @@ export async function POST(req: NextRequest) {
           sanityId: product.sanityId,
           quantity: cartItem.quantity,
           priceAtPurchase: product.price, // ← DB price, not client price
+          snapshotTitle: cartItem.snapshotTitle,
+          snapshotImageUrl: cartItem.snapshotImageUrl,
+          customization: cartItem.customization,
         });
       }
     }

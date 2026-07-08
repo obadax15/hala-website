@@ -1,0 +1,110 @@
+.pageContainer {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+}
+
+.productLayout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2.5rem;
+}
+
+@media (min-width: 992px) {
+  .productLayout {
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 4rem;
+    align-items: start;
+  }
+}
+
+.gallerySection {
+  position: sticky;
+  top: 2rem;
+}
+
+.infoSection {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+.relatedSection {
+  margin-top: 4rem;
+  padding-top: 4rem;
+  border-top: 1px solid var(--border-color, rgba(0, 0, 0, 0.1));
+}
+
+@media (prefers-color-scheme: dark) {
+  .relatedSection {
+    border-top-color: var(--border-color-dark, rgba(255, 255, 255, 0.1));
+  }
+}
+
+.sectionTitle {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 2rem;
+  text-align: center;
+  letter-spacing: -0.02em;
+}
+
+.relatedGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .relatedGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.relatedCard {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: transform 0.2s ease;
+}
+
+.relatedCard:hover {
+  transform: translateY(-4px);
+}
+
+.relatedImageWrapper {
+  position: relative;
+  aspect-ratio: 4/5;
+  border-radius: 16px;
+  overflow: hidden;
+  background-color: var(--image-bg, #f5f5f5);
+}
+
+@media (prefers-color-scheme: dark) {
+  .relatedImageWrapper {
+    background-color: var(--image-bg-dark, #1f1f1f);
+  }
+}
+
+.relatedImage {
+  object-fit: cover;
+}
+
+.relatedTitle {
+  font-size: 1rem;
+  font-weight: 500;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.relatedPrice {
+  font-weight: 600;
+  margin: 0;
+}
