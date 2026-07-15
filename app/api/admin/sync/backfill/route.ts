@@ -21,8 +21,10 @@ import { getAllCoupons } from '@/lib/repositories/coupon.repository';
 import {
   syncOrderToSanity,
   syncCouponToSanity,
+  syncUserToSanity,
 } from '@/lib/services/sanity-sync.service';
 import { logger } from '@/lib/logger';
+import prisma from '@/lib/prisma';
 
 export async function POST() {
   const session = await auth();
@@ -33,9 +35,40 @@ export async function POST() {
   logger.info('[Backfill] Starting Postgres → Sanity backfill');
 
   const results = {
+    users: { synced: 0, failed: 0 },
     orders: { synced: 0, failed: 0 },
     coupons: { synced: 0, failed: 0 },
   };
+
+  // ── Users ──────────────────────────────────────────────────────────────────
+  try {
+    const users = await prisma.user.findMany();
+    logger.info({ count: users.length }, '[Backfill] Syncing users');
+
+    for (const user of users) {
+      try {
+        await syncUserToSanity({
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          whatsappPhone: user.whatsappPhone,
+          whatsappVerified: user.whatsappVerified,
+          createdAt: user.createdAt,
+        });
+        results.users.synced++;
+      } catch (err) {
+        results.users.failed++;
+        logger.error({ userId: user.id, err }, '[Backfill] User sync failed');
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, '[Backfill] Failed to fetch users from Postgres');
+    return NextResponse.json(
+      { error: 'Failed to fetch users from database' },
+      { status: 500 }
+    );
+  }
 
   // ── Orders ─────────────────────────────────────────────────────────────────
   try {
@@ -84,12 +117,14 @@ export async function POST() {
   logger.info({ results }, '[Backfill] Completed');
 
   return NextResponse.json({
-    success: results.orders.failed === 0 && results.coupons.failed === 0,
+    success: results.users.failed === 0 && results.orders.failed === 0 && results.coupons.failed === 0,
     synced: {
+      users: results.users.synced,
       orders: results.orders.synced,
       coupons: results.coupons.synced,
     },
     failed: {
+      users: results.users.failed,
       orders: results.orders.failed,
       coupons: results.coupons.failed,
     },

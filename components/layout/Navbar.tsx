@@ -7,6 +7,7 @@ import styles from './Navbar.module.css';
 import AccountButton from '@/components/AccountButton';
 import CartButton from '@/components/CartButton';
 import ThemeToggle from '@/components/ThemeToggle';
+import { useScrollSpy } from '@/hooks/useScrollSpy';
 
 interface NavLink {
   href: string;
@@ -21,6 +22,13 @@ const NAV_LINKS: NavLink[] = [
   { href: '/favorites', label: 'Favorites',labelAr: 'المفضلة'    },
 ];
 
+const SCROLL_LINKS = [
+  { id: 'story', label: 'Story', labelAr: 'القصة' },
+  { id: 'brands', label: 'Brands', labelAr: 'العلامات' },
+  { id: 'hijab-products', label: 'Hijab', labelAr: 'حجاب' },
+  { id: 'plexi-products', label: 'Plexi', labelAr: 'بليكسي' },
+];
+
 export function Navbar() {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
@@ -29,6 +37,10 @@ export function Navbar() {
 
   const isAr = pathname?.startsWith('/ar') ?? false;
   const locale = isAr ? 'ar' : 'en';
+  
+  // Track active section on the homepage
+  const activeSection = useScrollSpy(SCROLL_LINKS.map(l => l.id), { rootMargin: '-80px 0px -70% 0px' });
+  const isHomePage = pathname === `/${locale}` || pathname === `/${locale}/`;
 
   // localised link helper
   const localise = (href: string) =>
@@ -62,6 +74,17 @@ export function Navbar() {
       ? pathname === `/${locale}` || pathname === `/${locale}/`
       : pathname?.startsWith(`/${locale}${href}`);
 
+  const handleScrollClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    if (isHomePage) {
+      e.preventDefault();
+      const el = document.getElementById(id);
+      if (el) {
+        const y = el.getBoundingClientRect().top + window.scrollY - 80;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+      }
+    }
+  };
+
   return (
     <>
       <header
@@ -75,8 +98,19 @@ export function Navbar() {
             <span className={styles.logoAccent}>hello</span>
           </Link>
 
-          {/* ── Desktop nav (Hidden) ── */}
-          <nav className={styles.desktopNav} aria-hidden="true" />
+          {/* ── Desktop nav (Scroll Links) ── */}
+          <nav className={styles.desktopNav} aria-label="Desktop navigation">
+            {SCROLL_LINKS.map((link) => (
+              <Link
+                key={link.id}
+                href={isHomePage ? `#${link.id}` : `/${locale}/#${link.id}`}
+                onClick={(e) => handleScrollClick(e, link.id)}
+                className={[styles.desktopLink, activeSection === link.id && isHomePage ? styles.desktopLinkActive : ''].filter(Boolean).join(' ')}
+              >
+                {isAr ? link.labelAr : link.label}
+              </Link>
+            ))}
+          </nav>
 
           {/* ── Actions (Cart + Hamburger) ── */}
           <div className={styles.actions}>

@@ -41,6 +41,15 @@ export const structure: StructureResolver = (S) =>
         .icon(() => '🎟️')
         .child(S.documentTypeList('coupon').title('Coupons')),
 
+      S.listItem()
+        .title('Users')
+        .icon(() => '👥')
+        .child(
+          S.documentTypeList('user')
+            .title('Users')
+            .defaultOrdering([{ field: 'pgCreatedAt', direction: 'desc' }])
+        ),
+
       S.divider(),
 
       // ── Homepage ─────────────────────────────────────────────

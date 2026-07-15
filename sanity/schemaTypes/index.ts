@@ -8,6 +8,7 @@ import { faqType } from './faq'
 import { shippingSettingsType } from './shippingSettings'
 import { orderType } from './order'
 import { couponType } from './coupon'
+import { userType } from './user'
 
 export const schema: { types: SchemaTypeDefinition[] } = {
   types: [
@@ -20,6 +21,7 @@ export const schema: { types: SchemaTypeDefinition[] } = {
     // Business operations (synced from PostgreSQL)
     orderType,
     couponType,
+    userType,
     // Singletons
     siteSettingsType,
     shippingSettingsType,

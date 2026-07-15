@@ -2,7 +2,26 @@ import { PrismaClient } from '@prisma/client';
 import { env } from './env';
 
 const prismaClientSingleton = () => {
-  return new PrismaClient();
+  return new PrismaClient().$extends({
+    query: {
+      user: {
+        async create({ args, query }) {
+          const result = await query(args);
+          import('./services/sanity-sync.service')
+            .then(({ syncUserToSanity }) => syncUserToSanity(result as any))
+            .catch(console.error);
+          return result;
+        },
+        async update({ args, query }) {
+          const result = await query(args);
+          import('./services/sanity-sync.service')
+            .then(({ syncUserToSanity }) => syncUserToSanity(result as any))
+            .catch(console.error);
+          return result;
+        },
+      },
+    },
+  });
 };
 
 declare const globalThis: {

@@ -61,6 +61,17 @@ export interface CouponSyncInput {
   isActive: boolean
 }
 
+/** Minimal User shape required to build a Sanity document. */
+export interface UserSyncInput {
+  id: string
+  name: string | null
+  email: string | null
+  role: string
+  whatsappPhone: string | null
+  whatsappVerified: boolean
+  createdAt: Date
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /** Returns the deterministic Sanity document ID for a Postgres order. */
@@ -71,6 +82,11 @@ export function orderSanityId(pgId: string): string {
 /** Returns the deterministic Sanity document ID for a Postgres coupon. */
 export function couponSanityId(pgId: string): string {
   return `coupon-${pgId}`
+}
+
+/** Returns the deterministic Sanity document ID for a Postgres user. */
+export function userSanityId(pgId: string): string {
+  return `user-${pgId}`
 }
 
 // ── Order Sync ────────────────────────────────────────────────────────────────
@@ -209,5 +225,36 @@ export async function deleteCouponFromSanity(pgId: string): Promise<void> {
     logger.info({ pgId, docId }, '[SanitySync] Coupon deleted from Sanity')
   } catch (err) {
     logger.error({ pgId, err }, '[SanitySync] Failed to delete coupon from Sanity')
+  }
+}
+
+// ── User Sync ─────────────────────────────────────────────────────────────────
+
+/**
+ * Upserts a User document in Sanity.
+ *
+ * Uses createOrReplace so the operation is always idempotent.
+ * Call this whenever a user is created or updated in PostgreSQL.
+ */
+export async function syncUserToSanity(user: UserSyncInput): Promise<void> {
+  const docId = userSanityId(user.id)
+
+  try {
+    const doc = {
+      _id: docId,
+      _type: 'user',
+      pgId: user.id,
+      name: user.name ?? '',
+      email: user.email ?? '',
+      role: user.role,
+      whatsappPhone: user.whatsappPhone ?? '',
+      whatsappVerified: user.whatsappVerified,
+      pgCreatedAt: user.createdAt.toISOString(),
+    }
+
+    await writeClient.createOrReplace(doc)
+    logger.info({ userId: user.id, docId }, '[SanitySync] User synced')
+  } catch (err) {
+    logger.error({ userId: user.id, err }, '[SanitySync] Failed to sync user')
   }
 }
