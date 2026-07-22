@@ -41,7 +41,7 @@ async function main() {
     await prisma.productSync.deleteMany({});
     console.log('Deleted ProductSyncs');
   } catch (err) {
-    console.error('Failed to delete Postgres data, continuing with Sanity...', err.message);
+    console.error('Failed to delete Postgres data, continuing with Sanity...', err instanceof Error ? err.message : err);
   }
 
   console.log('--- Deleting Sanity Data ---');
