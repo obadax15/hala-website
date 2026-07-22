@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
+
 import { auth } from '@/auth';
 import { uploadFile } from '@/lib/storage';
 import { createRateLimiter } from '@/lib/rate-limit';

@@ -10,6 +10,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
+
 import { z } from 'zod';
 import { whatsappService } from '@/lib/services/whatsapp.service';
 import { createRateLimiter } from '@/lib/rate-limit';

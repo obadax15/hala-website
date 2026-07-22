@@ -4,6 +4,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
+
 import { auth } from '@/auth';
 import { z } from 'zod';
 import { createAddress, getAddressesByUserId } from '@/lib/repositories/address.repository';
