@@ -1,3 +1,5 @@
+﻿export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/orders  — list all orders for the authenticated customer.
  * Ordered newest-first. Includes item snapshots for display.

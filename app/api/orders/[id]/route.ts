@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/orders/[id]  — get a single order with full detail.
  *

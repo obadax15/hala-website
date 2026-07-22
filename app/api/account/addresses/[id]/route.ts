@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 /**
  * GET    /api/account/addresses/[id]  — get single address
  * PATCH  /api/account/addresses/[id]  — update address

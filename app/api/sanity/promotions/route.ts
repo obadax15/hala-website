@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
 import { getFeaturedPromotions } from '@/sanity/lib/queries';
 
