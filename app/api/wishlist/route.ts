@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma';
 import { z } from 'zod';
+import { validateCsrfOrigin } from '@/lib/security';
 
 export async function GET(req: Request) {
   try {
@@ -28,8 +29,12 @@ const toggleSchema = z.object({
   action: z.enum(['add', 'remove']),
 });
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
+    // CSRF check for state-mutating requests
+    const csrfError = validateCsrfOrigin(req);
+    if (csrfError) return csrfError;
+
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

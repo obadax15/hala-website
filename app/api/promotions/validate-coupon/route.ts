@@ -23,9 +23,31 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { getPromotionByCouponCode } from '@/sanity/lib/queries';
 import { client } from '@/sanity/lib/client';
+import { createRateLimiter } from '@/lib/rate-limit';
+import { validateCsrfOrigin, getClientIp } from '@/lib/security';
+
+// 20 coupon validation attempts per IP per minute
+const couponLimiter = createRateLimiter({ limit: 20, windowMs: 60_000 });
+
+// ── Zod schema ────────────────────────────────────────────────────────────────
+
+const validateCouponSchema = z.object({
+  code: z.string().min(1, 'Coupon code is required').max(50),
+  items: z
+    .array(
+      z.object({
+        sanityId: z.string().min(1),
+        price: z.number().min(0),
+        quantity: z.number().int().min(1),
+        category: z.string().optional(),
+      })
+    )
+    .min(1, 'Cart items are required'),
+});
 
 export interface ValidateCouponItem {
   sanityId: string;
@@ -58,15 +80,26 @@ async function fetchProductCategories(sanityIds: string[]): Promise<Record<strin
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { code, items } = body as { code?: string; items?: ValidateCouponItem[] };
+    // 1. CSRF origin check
+    const csrfError = validateCsrfOrigin(req);
+    if (csrfError) return csrfError;
 
-    if (!code || typeof code !== 'string') {
-      return NextResponse.json({ valid: false, error: 'Coupon code is required.' }, { status: 400 });
+    // 2. Rate limit by IP
+    const ip = getClientIp(req);
+    const rateLimitError = couponLimiter.check(`coupon_${ip}`);
+    if (rateLimitError) return rateLimitError;
+
+    // 3. Validate body
+    const body = await req.json();
+    const parsed = validateCouponSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { valid: false, error: 'Validation failed', issues: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      );
     }
-    if (!Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({ valid: false, error: 'Cart items are required.' }, { status: 400 });
-    }
+
+    const { code, items } = parsed.data;
 
     // ── 1. Look up coupon in Postgres ───────────────────────────────────────
     const now = new Date();

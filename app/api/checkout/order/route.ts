@@ -32,6 +32,11 @@ import {
 } from '@/lib/repositories/order.repository';
 import { syncOrderToSanity } from '@/lib/services/sanity-sync.service';
 import { createCheckoutDraft, markDraftStripeSession } from '@/lib/repositories/checkout-draft.repository';
+import { createRateLimiter } from '@/lib/rate-limit';
+import { validateCsrfOrigin, getClientIp } from '@/lib/security';
+
+// 3 checkout attempts per IP per minute — prevents brute-force stock checks
+const checkoutLimiter = createRateLimiter({ limit: 3, windowMs: 60_000 });
 
 // Initialize Stripe (optional chaining for safety if key is missing)
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
@@ -67,6 +72,15 @@ const checkoutSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    // 0a. CSRF origin check
+    const csrfError = validateCsrfOrigin(req);
+    if (csrfError) return csrfError;
+
+    // 0b. Rate limit by IP
+    const ip = getClientIp(req);
+    const rateLimitError = checkoutLimiter.check(`checkout_${ip}`);
+    if (rateLimitError) return rateLimitError;
+
     // 1. Parse and validate body
     const body = await req.json();
     const parsed = checkoutSchema.safeParse(body);

@@ -152,13 +152,15 @@
 - [x] Optimize Sanity queries
 
 ## Phase 13 — Security Hardening
-- [ ] Add Zod validation to all API routes
-- [ ] Extend rate limiting to OTP, checkout, coupon endpoints
-- [ ] Add CSRF origin validation
-- [ ] Add file upload validation (MIME type + size)
+- [x] Create `lib/security.ts` — centralized CSRF origin validation, file upload validation, IP extraction
+- [x] Add Zod validation to all API routes (contact, OTP, coupon validation updated to use Zod schemas)
+- [x] Extend rate limiting to OTP, checkout, coupon validation, upload, contact endpoints
+- [x] Add CSRF origin validation to all state-mutating routes (checkout, coupon, upload, contact, OTP, wishlist, profile, addresses, admin coupons)
+- [x] Add file upload validation (MIME type allowlist + 5 MB size cap) via `validateUploadedFile()`
+- [x] `npx tsc --noEmit` — ✅ zero errors
 
 ## Phase 14 — Environment Variables
-- [ ] Update `.env.example` with new variables
+- [x] Update `.env.example` with Phase 13 security variable documentation and rate limit notes
 
 ## Final Verification
 - [ ] `npm run build` — zero errors

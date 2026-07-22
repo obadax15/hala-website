@@ -18,6 +18,7 @@ import {
 } from '@/lib/repositories/coupon.repository';
 import { syncCouponToSanity } from '@/lib/services/sanity-sync.service';
 import { logger } from '@/lib/logger';
+import { validateCsrfOrigin } from '@/lib/security';
 
 // ── Validation ────────────────────────────────────────────────────────────────
 
@@ -38,7 +39,10 @@ const createCouponSchema = z.object({
 
 // ── GET ───────────────────────────────────────────────────────────────────────
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const csrfError = validateCsrfOrigin(req);
+  if (csrfError) return csrfError;
+
   const session = await auth();
   if (session?.user?.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

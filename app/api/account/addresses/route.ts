@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { z } from 'zod';
 import { createAddress, getAddressesByUserId } from '@/lib/repositories/address.repository';
+import { validateCsrfOrigin } from '@/lib/security';
 
 const createSchema = z.object({
   label: z.enum(['HOME', 'WORK', 'OTHER']).default('HOME'),
@@ -30,6 +31,10 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  // CSRF check for state-mutating requests
+  const csrfError = validateCsrfOrigin(req);
+  if (csrfError) return csrfError;
+
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

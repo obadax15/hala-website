@@ -19,6 +19,7 @@ import {
   deleteCouponFromSanity,
 } from '@/lib/services/sanity-sync.service';
 import { logger } from '@/lib/logger';
+import { validateCsrfOrigin } from '@/lib/security';
 
 // ── Validation ────────────────────────────────────────────────────────────────
 
@@ -46,7 +47,10 @@ interface RouteParams {
 
 // ── GET ───────────────────────────────────────────────────────────────────────
 
-export async function GET(_req: NextRequest, { params }: RouteParams) {
+export async function GET(req: NextRequest, { params }: RouteParams) {
+  const csrfError = validateCsrfOrigin(req);
+  if (csrfError) return csrfError;
+
   const session = await auth();
   if (session?.user?.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

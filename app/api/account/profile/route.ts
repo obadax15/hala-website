@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
+import { validateCsrfOrigin } from '@/lib/security';
 
 const patchSchema = z.object({
   name: z.string().min(2).max(100).optional(),
@@ -41,6 +42,10 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
+  // CSRF check for state-mutating requests
+  const csrfError = validateCsrfOrigin(req);
+  if (csrfError) return csrfError;
+
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

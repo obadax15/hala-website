@@ -4,6 +4,11 @@ import {
   sendContactConfirmation,
   sendContactNotificationToAdmin,
 } from '@/lib/services/email.service';
+import { createRateLimiter } from '@/lib/rate-limit';
+import { validateCsrfOrigin, getClientIp } from '@/lib/security';
+
+// 5 contact submissions per IP per 10 minutes
+const contactLimiter = createRateLimiter({ limit: 5, windowMs: 10 * 60_000 });
 
 const contactSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
@@ -13,6 +18,16 @@ const contactSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    // 1. CSRF origin check
+    const csrfError = validateCsrfOrigin(req);
+    if (csrfError) return csrfError;
+
+    // 2. Rate limit by IP
+    const ip = getClientIp(req);
+    const rateLimitError = contactLimiter.check(`contact_${ip}`);
+    if (rateLimitError) return rateLimitError;
+
+    // 3. Validate body
     const body = await req.json();
     const parsed = contactSchema.safeParse(body);
 
@@ -32,7 +47,7 @@ export async function POST(req: NextRequest) {
     ]);
 
     return NextResponse.json(
-      { success: true, message: 'Message received! We\'ll be in touch soon.' },
+      { success: true, message: "Message received! We'll be in touch soon." },
       { status: 200 }
     );
   } catch (err) {

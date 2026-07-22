@@ -1,28 +1,54 @@
+/**
+ * POST /api/auth/whatsapp/send-otp
+ *
+ * Sends a WhatsApp OTP to the provided phone number.
+ *
+ * Security:
+ *  - CSRF origin validation
+ *  - Rate-limited: 5 OTP requests per IP per minute
+ *  - Zod validation on the phone number
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { whatsappService } from '@/lib/services/whatsapp.service';
 import { createRateLimiter } from '@/lib/rate-limit';
+import { validateCsrfOrigin, getClientIp } from '@/lib/security';
 
 // 5 OTP requests per IP per minute
 const otpLimiter = createRateLimiter({ limit: 5, windowMs: 60_000 });
 
+const sendOtpSchema = z.object({
+  phone: z
+    .string()
+    .regex(
+      /^\+[1-9]\d{9,14}$/,
+      'Phone number must be in E.164 format (e.g. +963912345678)'
+    ),
+});
+
 export async function POST(req: NextRequest) {
   try {
-    const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
-    const limited = otpLimiter.check(`otp_${ip}`);
-    if (limited) return limited;
+    // 1. CSRF origin check
+    const csrfError = validateCsrfOrigin(req);
+    if (csrfError) return csrfError;
 
-    const { phone } = await req.json();
+    // 2. Rate limit by IP
+    const ip = getClientIp(req);
+    const rateLimitError = otpLimiter.check(`otp_${ip}`);
+    if (rateLimitError) return rateLimitError;
 
-    if (!phone || typeof phone !== 'string') {
-      return NextResponse.json({ error: 'Valid phone number is required' }, { status: 400 });
+    // 3. Validate body
+    const body = await req.json();
+    const parsed = sendOtpSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', issues: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      );
     }
 
-    // Basic E.164 validation (starts with + and contains 10-15 digits)
-    const phoneRegex = /^\+[1-9]\d{9,14}$/;
-    if (!phoneRegex.test(phone)) {
-      return NextResponse.json({ error: 'Phone number must be in E.164 format (e.g. +963912345678)' }, { status: 400 });
-    }
-
+    const { phone } = parsed.data;
     const result = await whatsappService.sendOTP(phone);
 
     return NextResponse.json({
